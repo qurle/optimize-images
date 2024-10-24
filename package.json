@@ -1,19 +1,22 @@
 {
-  "name": "plugin-name",
+  "name": "optimize-images",
   "version": "1.0.0",
-  "description": "insert your description",
+  "description": "figma plugin for optimizing used images",
   "main": "code.js",
   "scripts": {
     "build": "webpack",
     "watch": "npm run build -- --watch"
   },
-  "author": "your precious name",
+  "author": "Nick Qurle",
   "license": "",
   "devDependencies": {
-    "@figma/plugin-typings": "^1.87.0",
+    "@figma/plugin-typings": "*",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.3",
     "webpack": "^5.90.0",
     "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "image-conversion": "^2.1.1"
   }
 }

@@ -1,22 +1,16 @@
-# Plugin name for Figma
-Plugin description
+# Optimize Images for Figma
+Free up some memory by downscaling images and removing hidden image fills.
 
-![<Plugin name covers>](https://github.com/qurle/plugin-starter/blob/main/assets/cover.png?raw=true)
+![Optimize Image cover>](https://github.com/qurle/optimize-images/blob/main/assets/cover.png?raw=true)
 
 ## **How to use**
 
 **Just run it** from the Quick Actions or Plugin menu. 
 
-Alternatively, you can select some layers. The plugin will `<do this>`.
-
-## **How it works**
-
-`<Tell us>`
+Plugin will search for layers with image fills. Underlying images will be deleted. Image on top will be rescaled to @3x, when possible.
 
 ## **Problem? Idea? Kind words?**
 
-I accept feature suggestions and ideas to improve the plugin. No need to mess with locked layers? Rename on all pages at once? Useful exceptions? If you have any ideas or issues, let me know in the comments.
-
-Or you can contact me via e-mail at [nick.denq@gmail.com](mailto:nick.denq@gmail.com?subject=<Plugin%20for%Figma>) and [Telegram](http://t.me/qurle).
+I accept feature suggestions and ideas to improve the plugin. Let me know in the comments or contact me via e-mail at [nikita.denisov@vk.team](mailto:nikita.denisov@vk.team?subject=Optimize%20Images%20for%Figma>) or [Telegram](http://t.me/qurle).
 
 ## <3

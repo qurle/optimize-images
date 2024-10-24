@@ -1,1 +1,24 @@
-<!-- interface -->
+<script src="https://cdn.jsdelivr.net/gh/WangYuLue/image-conversion/build/conversion.js"></script>
+<script>
+	window.onmessage = async (message) => {
+		if ("bytes" in message.data.pluginMessage && "node" in message.data.pluginMessage) {
+			const bytes = message.data.pluginMessage.bytes
+			const node = message.data.pluginMessage.node
+			const blob = new Blob([bytes])
+
+			const compressedBlob = await imageConversion.compress(blob, {
+				quality: 0.8,
+				type: imageConversion.EImageType.JPEG,
+				width: "width" in node ? node.width * 3 : 200,
+				height: "height" in node ? node.height * 3 : 200,
+			})
+			const newBuffer = new Uint8Array(await compressedBlob.arrayBuffer())
+
+			parent.postMessage({
+				pluginMessage: {
+					buffer: newBuffer
+				}
+			}, '*')
+		}
+	}
+</script>
