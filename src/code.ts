@@ -34,6 +34,7 @@ async function run() {
   else {
     working = false
     figma.notify('No layers selected')
+    figma.closePlugin()
   }
 }
 
