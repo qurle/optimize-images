@@ -8,7 +8,7 @@
   ],
   "networkAccess": {
     "allowedDomains": [
-      "none"
+      "https://cdn.jsdelivr.net"
     ]
   },
   "ui": "src/ui.html",
