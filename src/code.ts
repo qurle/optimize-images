@@ -90,10 +90,16 @@ async function compressImage(node: FilledNode) {
       newPaints.push(paint)
     }
     else {
-      c(`Image!`)
+      c(`It's image`)
       const buffer = await figma.getImageByHash(paint.imageHash).getBytesAsync()
-      c(`Got bytes`)
-      figma.ui.postMessage({ bytes: buffer, node: node })
+      c(`Sending bytes`)
+      figma.ui.postMessage({
+        bytes: buffer, node: {
+          id: 'id' in node ? node.id : null,
+          width: 'width' in node ? node.width : null,
+          height: 'height' in node ? node.height : null
+        }
+      })
       const message = await new Promise((resolve, reject) => {
         figma.ui.onmessage = value => {
           c(`Got message from browser`)

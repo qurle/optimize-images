@@ -1,24 +1,41 @@
 <script id="compressor" src="https://cdn.jsdelivr.net/gh/WangYuLue/image-conversion/build/conversion.js"></script>
 <script>
 	window.onmessage = async (message) => {
-		if ("bytes" in message.data.pluginMessage && "node" in message.data.pluginMessage) {
-			const bytes = message.data.pluginMessage.bytes
-			const node = message.data.pluginMessage.node
-			const blob = new Blob([bytes])
+		try {
+			if ("bytes" in message.data.pluginMessage && "node" in message.data.pluginMessage) {
+				const bytes = message.data.pluginMessage.bytes
+				const node = message.data.pluginMessage.node
+				const blob = new Blob([bytes])
 
-			const compressedBlob = await imageConversion.compress(blob, {
-				quality: 0.8,
-				type: imageConversion.EImageType.JPEG,
-				width: "width" in node ? node.width * 3 : 200,
-				height: "height" in node ? node.height * 3 : 200,
-			})
-			const newBuffer = new Uint8Array(await compressedBlob.arrayBuffer())
 
-			parent.postMessage({
-				pluginMessage: {
-					buffer: newBuffer
+				const config = {
+					quality: 0.8,
+					type: imageConversion.EImageType.JPEG,
 				}
-			}, '*')
+
+				if ('width' in node && 'height' in node) {
+					const minSide = node.width <= node.height ? 'width' : 'height'
+					config[minSide] = node[minSide] * 3
+				} else {
+					config.width = 200
+					config.height = 200
+				}
+
+				console.log(`Image is compressing to ${config.width || 'auto'} × ${config.height || 'auto'}`)
+
+				const compressedBlob = await imageConversion.compress(blob, config)
+				const newBuffer = new Uint8Array(await compressedBlob.arrayBuffer())
+
+				parent.postMessage({
+					pluginMessage: {
+						buffer: newBuffer
+					}
+				}, '*')
+			} else
+				throw `node doesn't have width and height`
+		}
+		catch (e) {
+			throw e
 		}
 	}
 </script>
