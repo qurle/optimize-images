@@ -57,25 +57,30 @@ function leaveOneImage(node: FilledNode) {
   let nodeAffected = false
 
   const paints = node.fills as ReadonlyArray<Paint>
+  c(`Old fills ↴`)
+  c(paints)
   const newPaints: Array<Paint> = []
   let foundImage = false
   for (let i = paints.length - 1; i >= 0; i--) {
     if (paints[i].type !== 'IMAGE') {
       c(`Not image`)
-      newPaints.push(paints[i])
+      newPaints.unshift(paints[i])
     }
     else if (!foundImage) {
-      c(`First image`)
+      c(`Adding first image`)
       foundImage = true
-      newPaints.push(paints[i])
+      newPaints.unshift(paints[i])
       imageCount++
       nodeAffected = true
     } else {
+      c(`Skipping next image`)
       imageCount++
     }
   }
   if (nodeAffected) nodeCount++
   node.fills = newPaints
+  c(`New fills ↴`)
+  c(newPaints)
   return newPaints
 }
 
@@ -127,7 +132,6 @@ async function compressImage(node: FilledNode) {
 // Ending the work
 function finish() {
   working = false
-  figma.root.setRelaunchData({ relaunch: '' })
   if (imageCount > 0) {
     notify(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)] +
       " " + renameMsgs[Math.floor(Math.random() * renameMsgs.length)] +
@@ -135,7 +139,7 @@ function finish() {
         " in " + ((nodeCount === 1) ? "one layer" : (nodeCount + " layers"))))
   }
   else notify(idleMsgs[Math.floor(Math.random() * idleMsgs.length)])
-  setTimeout(() => { console.log("Timeouted"), figma.closePlugin() }, 3000)
+  figma.closePlugin()
 }
 
 // Show new notification
