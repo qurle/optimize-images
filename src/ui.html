@@ -3,22 +3,34 @@
 	window.onmessage = async (message) => {
 		try {
 			if ("bytes" in message.data.pluginMessage && "node" in message.data.pluginMessage) {
-				const bytes = message.data.pluginMessage.bytes
-				const node = message.data.pluginMessage.node
-				const blob = new Blob([bytes])
-
+				const msg = message.data.pluginMessage
+				const node = msg.node
+				const blob = new Blob([msg.bytes])
 
 				const config = {
+					// JPEG, 80% quality
 					quality: 0.8,
 					type: imageConversion.EImageType.JPEG,
 				}
 
 				if ('width' in node && 'height' in node) {
+
 					const minSide = node.width <= node.height ? 'width' : 'height'
-					config[minSide] = node[minSide] * 3
+					// Width and height multiplier for cropped images
+					// Expected matrix is 
+					// [s(x), 	0, 		t(x)]
+					// [0, 		s(y), 	t(y)]
+					const scaling = msg.transform ?
+						(1 / (minSide === 'width' ?
+							msg.transform[0][0]
+							: msg.transform[1][1])
+						).toFixed(2)
+						: 1
+
+					config[minSide] = node[minSide] * scaling * 3
 				} else {
-					config.width = 200
-					config.height = 200
+					config.width = 400
+					config.height = 400
 				}
 
 				console.log(`Image is compressing to ${config.width || 'auto'} × ${config.height || 'auto'}`)

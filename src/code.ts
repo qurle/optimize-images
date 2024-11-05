@@ -99,11 +99,14 @@ async function compressImage(node: FilledNode) {
       const buffer = await figma.getImageByHash(paint.imageHash).getBytesAsync()
       c(`Sending bytes`)
       figma.ui.postMessage({
-        bytes: buffer, node: {
+        bytes: buffer,
+        node: {
           id: 'id' in node ? node.id : null,
           width: 'width' in node ? node.width : null,
-          height: 'height' in node ? node.height : null
-        }
+          height: 'height' in node ? node.height : null,
+        },
+        scaleMode: paint.scaleMode,
+        transform: paint.imageTransform,
       })
       const message = await new Promise((resolve, reject) => {
         figma.ui.onmessage = value => {
@@ -115,11 +118,11 @@ async function compressImage(node: FilledNode) {
       c(message)
       const newBuffer = (message as any).buffer as Uint8Array
 
-      const newPaint: Paint = {
-        type: 'IMAGE',
+      const newPaint: ImagePaint = {
+        ...paint,
         imageHash: figma.createImage(newBuffer).hash,
-        scaleMode: paint.scaleMode
       }
+
       c(`To paint`)
 
       newPaints.push(newPaint)
