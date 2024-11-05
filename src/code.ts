@@ -1,17 +1,26 @@
-const LOGS = true
+export const LOGS = false
 
 import { FilledNode } from './types'
 
 // Constants
-const confirmMsgs = ["Done!", "You got it!", "Aye!", "Is that all?", "My job here is done.", "Gotcha!", "It wasn't hard."]
 const renameMsgs = ["Optimized", "Affected", "Made it with", "Fixed"]
-const idleMsgs = ["All great, already", "Nothing to do, everything's good", "Any layers to affect? Can't see it", "Nothing to do, your layers are great"]
+const idleMsgs = ["All great, already", "Everything's good", "All good", "Your images are great"]
 // Variables
 let notification: NotificationHandler
 let selection: ReadonlyArray<SceneNode>
-let working: boolean
-let nodeCount: number = 0
-let imageCount: number = 0
+
+let prevProgressNotification: NotificationHandler
+let progressNotification: NotificationHandler
+let progressNotificationTimeout: number
+
+let working = false
+let showProgress = false
+
+let nodesProcessed = 0
+let imageProcessed = 0
+let imageDeleted = 0
+let imageAmount = 0
+let bytesSaved = 0
 
 figma.on("currentpagechange", cancel)
 
@@ -22,43 +31,54 @@ run()
 
 async function run() {
   // Anything selected?
-  c(`Running`)
 
   figma.showUI(__html__, { visible: false })
 
-  if (selection.length)
-    for (const node of selection) {
-      await optimize(node)
-      finish()
-    }
+  if (selection.length) {
+    const startTime = Date.now()
+    initProgressNotification(selection)
+    await optimize(selection)
+    console.log(`Time: ${Math.round(Date.now() - startTime)} ms`)
+    finish()
+  }
   else {
     working = false
     figma.notify('No layers selected')
     figma.closePlugin()
   }
+
+}
+
+// Count imagaes in selected nodes
+function countImages(nodes: readonly SceneNode[]) {
+  for (const node of nodes) {
+    if ("fills" in node && node.fills !== figma.mixed) {
+      imageAmount += node.fills.filter(fill => fill.type === 'IMAGE').length
+    }
+    if ("children" in node) {
+      countImages(node.children)
+    }
+  }
 }
 
 // Action for selected nodes
-async function optimize(node: SceneNode | PageNode) {
-  if ("fills" in node && node.fills !== figma.mixed) {
-    c(`Leaf ${node.name}`)
-    leaveOneImage(node)
-    await compressImage(node)
-  }
-  if ("children" in node) {
-    c(`Got children`)
-    for (const child of node.children)
-      await optimize(child)
+async function optimize(nodes: readonly SceneNode[]) {
+  for (const node of nodes) {
+    if ("fills" in node && node.fills !== figma.mixed) {
+      leaveOneImage(node)
+      await compressImage(node)
+    }
+    if ("children" in node) {
+      await optimize(node.children)
+    }
   }
 }
 
-function leaveOneImage(node: FilledNode) {
+async function leaveOneImage(node: FilledNode) {
   c(`Leaving one image`)
   let nodeAffected = false
 
   const paints = node.fills as ReadonlyArray<Paint>
-  c(`Old fills ↴`)
-  c(paints)
   const newPaints: Array<Paint> = []
   let foundImage = false
   for (let i = paints.length - 1; i >= 0; i--) {
@@ -70,17 +90,15 @@ function leaveOneImage(node: FilledNode) {
       c(`Adding first image`)
       foundImage = true
       newPaints.unshift(paints[i])
-      imageCount++
       nodeAffected = true
     } else {
-      c(`Skipping next image`)
-      imageCount++
+      c(`Skipping next image`);
+      imageProcessed++
+      imageDeleted++
     }
   }
-  if (nodeAffected) nodeCount++
+  if (nodeAffected) nodesProcessed++
   node.fills = newPaints
-  c(`New fills ↴`)
-  c(newPaints)
   return newPaints
 }
 
@@ -91,11 +109,9 @@ async function compressImage(node: FilledNode) {
   const newPaints: Array<Paint> = []
   for (const paint of paints) {
     if (paint.type !== 'IMAGE') {
-      c(`Not image`)
       newPaints.push(paint)
     }
     else {
-      c(`It's image`)
       const buffer = await figma.getImageByHash(paint.imageHash).getBytesAsync()
       c(`Sending bytes`)
       figma.ui.postMessage({
@@ -117,36 +133,76 @@ async function compressImage(node: FilledNode) {
 
       c(message)
       const newBuffer = (message as any).buffer as Uint8Array
+      bytesSaved += buffer.length - newBuffer.length
 
       const newPaint: ImagePaint = {
         ...paint,
         imageHash: figma.createImage(newBuffer).hash,
       }
-
-      c(`To paint`)
-
       newPaints.push(newPaint)
+      imageProcessed++
     }
   }
   node.fills = newPaints
   return newPaints
 }
 
+function initProgressNotification(nodes) {
+  imageProcessed = 0
+  countImages(nodes)
+  showProgress = true
+  showProgressNotification()
+}
+
+function showProgressNotification() {
+  const timeout = 150;
+  (function loop() {
+    if (showProgress) {
+      const message = `Image ${imageProcessed + 1} of ${imageAmount}`
+      prevProgressNotification = progressNotification
+      progressNotification = figma.notify(message, { timeout: timeout + 50 })
+      setTimeout(() => prevProgressNotification?.cancel(), 50)
+      progressNotificationTimeout = setTimeout(() => { loop() }, timeout);
+    }
+    else {
+      prevProgressNotification?.cancel()
+      progressNotification?.cancel()
+    }
+  })()
+}
+
+function stopProgressNotification() {
+  showProgress = false
+  prevProgressNotification?.cancel()
+  progressNotification?.cancel()
+  if (progressNotificationTimeout)
+    clearTimeout(progressNotificationTimeout)
+}
+
 // Ending the work
 function finish() {
   working = false
-  if (imageCount > 0) {
-    notify(confirmMsgs[Math.floor(Math.random() * confirmMsgs.length)] +
-      " " + renameMsgs[Math.floor(Math.random() * renameMsgs.length)] +
-      " " + ((imageCount === 1) ? "only one image" : (imageCount + " images") +
-        " in " + ((nodeCount === 1) ? "one layer" : (nodeCount + " layers"))))
+  if (imageProcessed > 0) {
+    notify(
+      displayCount('Checked', nodesProcessed, 'node') +
+      displayCount(' Deleted', imageDeleted, 'fill') +
+      ((bytesSaved > 0) ? ` Compresed ${readableBytes(bytesSaved)}.` : ''))
   }
   else notify(idleMsgs[Math.floor(Math.random() * idleMsgs.length)])
   figma.closePlugin()
 }
 
+function displayCount(prefix: string, count: number, plural: string, dot = true) {
+  if (count === 0)
+    return ''
+  return `${prefix} ${count} ${plural}${count > 1 ? 's' : ''}${dot ? '.' : ''}`
+}
+
 // Show new notification
-function notify(text: string) {
+function notify(text: string, clearProgress = true) {
+  if (clearProgress) {
+    stopProgressNotification()
+  }
   if (notification != null)
     notification.cancel()
   notification = figma.notify(text)
@@ -156,9 +212,24 @@ function notify(text: string) {
 function cancel() {
   if (notification != null)
     notification.cancel()
+  stopProgressNotification()
   if (working) {
     notify("Plugin work have been interrupted")
   }
+}
+
+function getRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+function readableBytes(bytes: number) {
+  const mibFactor = 1024 * 1024
+  const kibFactor = 1024
+  if (bytes > mibFactor)
+    return `${(bytes / mibFactor).toFixed(2)} MiB`
+  if (bytes > kibFactor)
+    return `${(bytes / kibFactor).toFixed(2)} KiB`
+  return `${bytes.toFixed(2)} bytes`
 }
 
 function c(str, error = false) {
