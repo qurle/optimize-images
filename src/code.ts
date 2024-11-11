@@ -30,23 +30,29 @@ selection = figma.currentPage.selection
 run()
 
 async function run() {
-  // Anything selected?
+  try {
+    figma.showUI(__html__, { visible: false })
 
-  figma.showUI(__html__, { visible: false })
-
-  if (selection.length) {
-    const startTime = Date.now()
-    initProgressNotification(selection)
-    await optimize(selection)
-    console.log(`Time: ${Math.round(Date.now() - startTime)} ms`)
-    finish()
+    if (selection.length) {
+      const startTime = Date.now()
+      initProgressNotification(selection)
+      await optimize(selection)
+      console.log(`Time: ${Math.round(Date.now() - startTime)} ms`)
+      finish()
+    }
+    else {
+      working = false
+      figma.notify('No layers selected')
+      figma.closePlugin()
+    }
   }
-  else {
-    working = false
-    figma.notify('No layers selected')
-    figma.closePlugin()
+  catch ({ name, message }) {
+    const errorMsg = message.length > 120 ? message.slice(0, 120) + '…' : message
+    stopProgressNotification()
+    figma.notify(errorMsg, {
+      error: true,
+    })
   }
-
 }
 
 // Count imagaes in selected nodes
@@ -64,11 +70,13 @@ function countImages(nodes: readonly SceneNode[]) {
 // Action for selected nodes
 async function optimize(nodes: readonly SceneNode[]) {
   for (const node of nodes) {
-    if ("fills" in node && node.fills !== figma.mixed) {
+    if ("fills" in node && node.fills !== figma.mixed && node.fills.some(fill => fill.type === 'IMAGE')) {
+    // c(`Optimizing ${node.name}`)
       leaveOneImage(node)
       await compressImage(node)
     }
     if ("children" in node) {
+      // c(`Checking children of ${node.name}`)
       await optimize(node.children)
     }
   }
