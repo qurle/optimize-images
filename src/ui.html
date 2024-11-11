@@ -27,7 +27,7 @@
 						).toFixed(2)
 						: 1
 
-					config[minSide] = node[minSide] * scaling * 3
+					config[minSide] = (node[minSide] * scaling * 3).toFixed(1)
 				} else {
 					config.width = 400
 					config.height = 400
